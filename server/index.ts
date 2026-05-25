@@ -268,7 +268,14 @@ app.use((error: unknown, _req: express.Request, res: express.Response, next: exp
   if (error instanceof z.ZodError) {
     const firstIssue = error.issues[0];
     const field = firstIssue?.path.join(".");
-    const message = field === "password" ? "A senha deve ter pelo menos 6 caracteres." : "Confira os dados informados.";
+    const message =
+      {
+        email: "Informe um email valido. Exemplo: nome@email.com.",
+        password: "A senha deve ter pelo menos 6 caracteres.",
+        name: "Informe seu nome completo.",
+        credential: "Informe seu registro profissional, como CREF ou CRN.",
+        documentUrl: "Informe um link valido para o comprovante profissional.",
+      }[field ?? ""] ?? "Confira os dados informados.";
     return res.status(400).json({ error: message });
   }
 

@@ -149,6 +149,11 @@ function App() {
 
   async function onAuth(form: FormData) {
     const body = Object.fromEntries(form.entries());
+    const email = String(body.email ?? "");
+    if (!email.includes(".") || !email.includes("@")) {
+      setNotice("Informe um email valido. Exemplo: nome@email.com.");
+      return;
+    }
     const path = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
     const data = await api<{ token: string; user: User }>(path, { method: "POST", body: JSON.stringify(body) });
     localStorage.setItem("fitlink_token", data.token);
@@ -256,7 +261,7 @@ function App() {
                 <option value="NUTRITIONIST">Nutricionista</option>
               </select>
               <input name="credential" placeholder="CREF, CRN ou registro profissional" required />
-              <input name="documentUrl" placeholder="Link do comprovante ou portfolio profissional" required />
+              <input name="documentUrl" type="url" placeholder="https://link-do-comprovante.com" required />
               <select name="subscriptionPlan" defaultValue="PRO_START">
                 <option value="PRO_START">Pro Start - teste inicial</option>
                 <option value="PRO_PLUS">Pro Plus - agenda e alunos ilimitados</option>
