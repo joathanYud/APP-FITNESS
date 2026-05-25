@@ -22,6 +22,11 @@ import { API_URL, NAV_ITEMS, roleLabel, type TabId } from "./config";
 import type { Appointment, Message, Plan, Post, User } from "./types";
 import "./styles/app.css";
 
+function formatDateTimeLocal(date: Date) {
+  const timezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
+}
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem("fitlink_token") ?? "");
   const [me, setMe] = useState<User | null>(null);
@@ -40,6 +45,12 @@ function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }), [token]);
+  const appointmentMin = useMemo(() => formatDateTimeLocal(new Date()), []);
+  const appointmentDefault = useMemo(() => {
+    const nextHour = new Date();
+    nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+    return formatDateTimeLocal(nextHour);
+  }, []);
   const nextAppointment = useMemo(
     () =>
       appointments
@@ -150,9 +161,14 @@ function App() {
 
   async function book(form: FormData) {
     const body = Object.fromEntries(form.entries());
+    const startsAt = new Date(String(body.startsAt));
+    if (Number.isNaN(startsAt.getTime())) {
+      setNotice("Escolha uma data e horario validos para agendar.");
+      return;
+    }
     await api<Appointment>("/api/appointments", {
       method: "POST",
-      body: JSON.stringify({ ...body, startsAt: new Date(String(body.startsAt)).toISOString() }),
+      body: JSON.stringify({ ...body, startsAt: startsAt.toISOString() }),
     });
     setNotice("Horario solicitado.");
     await refresh();
@@ -369,7 +385,7 @@ function App() {
               <h2>Marcar compromisso</h2>
               <select name="professionalId">{pros.map((pro) => <option key={pro.id} value={pro.id}>{pro.name} - {roleLabel(pro.role)}</option>)}</select>
               <input name="title" placeholder="Titulo da consulta" required />
-              <input name="startsAt" type="datetime-local" required />
+              <input name="startsAt" type="datetime-local" defaultValue={appointmentDefault} min={appointmentMin} required />
               <textarea name="notes" placeholder="Observacoes" />
               <button className="primary"><CalendarDays size={18} /> Agendar</button>
             </form>
