@@ -1,4 +1,5 @@
 import {
+  Activity,
   Apple,
   Bot,
   CalendarDays,
@@ -12,6 +13,7 @@ import type { Role } from "./types";
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
 
 export const NAV_ITEMS = [
+  ["home", "Inicio", Activity],
   ["feed", "Feed", Dumbbell],
   ["people", "Pessoas", Users],
   ["chat", "Chat", MessageCircle],

@@ -135,7 +135,35 @@ app.get("/api/plans", auth, (req: AuthRequest, res) => {
 
 app.post("/api/ai/plan", auth, (req: AuthRequest, res) => {
   const data = z.object({ goal: z.string().min(3), level: z.string(), days: z.coerce.number().min(2).max(7), diet: z.string().min(3) }).parse(req.body);
-  const content = [`Plano de treino ${data.level} para ${data.goal}`, `Frequencia: ${data.days} dias por semana.`, "Treino A: inferiores, agachamento, leg press, stiff, panturrilha e core.", "Treino B: superiores, supino, remada, desenvolvimento, puxada e bracos.", "Treino C: condicionamento, mobilidade e circuito metabolico.", `Dieta base: ${data.diet}. Priorize proteina, vegetais, agua e ajuste calorias pela evolucao.`, "Consulte um profissional para restricoes clinicas."].join("\n");
+  const weeklySplit = [
+    "Dia 1: inferiores com agachamento, leg press, stiff, panturrilha e core.",
+    "Dia 2: superiores com supino, remada, desenvolvimento, puxada e bracos.",
+    "Dia 3: cardio progressivo, mobilidade e circuito metabolico leve.",
+    "Dia 4: inferiores com foco posterior, gluteos, unilateral e abdomen.",
+    "Dia 5: superiores com costas, peito, ombros e finalizacao de bracos.",
+    "Dia 6: condicionamento, tecnica dos exercicios e alongamento ativo.",
+    "Dia 7: recuperacao, caminhada leve e revisao de medidas.",
+  ].slice(0, data.days);
+  const intensity = {
+    iniciante: "Use cargas confortaveis, 2 a 3 series por exercicio e aprenda a tecnica antes de subir peso.",
+    intermediario: "Trabalhe com 3 a 4 series, progressao semanal pequena e 1 a 2 repeticoes em reserva.",
+    avancado: "Alterne semanas de volume e intensidade, registre RPE e proteja a recuperacao.",
+  }[data.level] ?? "Ajuste volume e intensidade conforme energia, sono e evolucao.";
+  const content = [
+    `Plano ${data.level} para ${data.goal}`,
+    `Frequencia: ${data.days} dias por semana.`,
+    intensity,
+    "",
+    "Divisao semanal:",
+    ...weeklySplit,
+    "",
+    "Dieta base:",
+    `${data.diet}. Priorize proteina em todas as refeicoes, vegetais, carboidratos perto do treino, agua e constancia.`,
+    "",
+    "Acompanhamento:",
+    "Registre carga, repeticoes, sono, fome, medidas e energia. Ajuste o plano a cada 2 semanas.",
+    "Consulte um profissional para restricoes clinicas, lesoes ou objetivos competitivos.",
+  ].join("\n");
   const plan = { id: id(), memberId: req.user!.id, authorId: null, kind: "IA", title: `Plano IA - ${data.goal}`, content, createdAt: now() };
   db.prepare("INSERT INTO plans VALUES (?, ?, ?, ?, ?, ?, ?)").run(plan.id, plan.memberId, plan.authorId, plan.kind, plan.title, plan.content, plan.createdAt);
   res.json(plan);

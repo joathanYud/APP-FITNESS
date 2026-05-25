@@ -5,12 +5,16 @@ import { io, Socket } from "socket.io-client";
 import {
   Bot,
   CalendarDays,
+  CheckCircle2,
   Dumbbell,
   Heart,
   LogOut,
   MessageCircle,
   Plus,
+  Search,
   Settings,
+  Sparkles,
+  TrendingUp,
 } from "lucide-react";
 import { PlanList } from "./components/PlanList";
 import { UserGrid } from "./components/UserGrid";
@@ -21,7 +25,7 @@ import "./styles/app.css";
 function App() {
   const [token, setToken] = useState(localStorage.getItem("fitlink_token") ?? "");
   const [me, setMe] = useState<User | null>(null);
-  const [tab, setTab] = useState<TabId>("feed");
+  const [tab, setTab] = useState<TabId>("home");
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<User[]>([]);
   const [pros, setPros] = useState<User[]>([]);
@@ -31,9 +35,37 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [notice, setNotice] = useState("");
+  const [feedQuery, setFeedQuery] = useState("");
+  const [peopleQuery, setPeopleQuery] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
 
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }), [token]);
+  const nextAppointment = useMemo(
+    () =>
+      appointments
+        .filter((item) => new Date(item.startsAt).getTime() >= Date.now())
+        .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0],
+    [appointments],
+  );
+  const dashboardStats = useMemo(
+    () => [
+      { label: "Posts no feed", value: posts.length, detail: "treinos e dietas publicados" },
+      { label: "Pessoas", value: people.length + 1, detail: "membros na comunidade" },
+      { label: "Planos salvos", value: plans.length, detail: "treinos e dietas no perfil" },
+      { label: "Agenda", value: appointments.length, detail: "compromissos cadastrados" },
+    ],
+    [appointments.length, people.length, plans.length, posts.length],
+  );
+  const visiblePosts = useMemo(() => {
+    const query = feedQuery.trim().toLowerCase();
+    if (!query) return posts;
+    return posts.filter((post) => [post.title, post.content, post.workout, post.author.name, post.type].some((field) => field?.toLowerCase().includes(query)));
+  }, [feedQuery, posts]);
+  const visiblePeople = useMemo(() => {
+    const query = peopleQuery.trim().toLowerCase();
+    if (!query) return people;
+    return people.filter((user) => [user.name, user.goal, user.bio, user.location, roleLabel(user.role)].some((field) => field?.toLowerCase().includes(query)));
+  }, [people, peopleQuery]);
 
   async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
     // Mantem todas as chamadas autenticadas com o mesmo contrato da API.
@@ -188,19 +220,78 @@ function App() {
         </header>
         {notice && <button className="notice inline" onClick={() => setNotice("")}>{notice}</button>}
 
+        {tab === "home" && (
+          <div className="home-layout">
+            <section className="hero-panel">
+              <div>
+                <p>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</p>
+                <h2>{me.goal}</h2>
+                <span>Use o feed para registrar treino, gere um plano pela IA ou agende com um profissional.</span>
+              </div>
+              <button className="primary" onClick={() => setTab("ai")}><Sparkles size={18} /> Criar plano</button>
+            </section>
+
+            <section className="stats-grid">
+              {dashboardStats.map((stat) => (
+                <article className="stat-card" key={stat.label}>
+                  <b>{stat.value}</b>
+                  <span>{stat.label}</span>
+                  <small>{stat.detail}</small>
+                </article>
+              ))}
+            </section>
+
+            <div className="grid two">
+              <section className="panel list">
+                <h2>Proximo compromisso</h2>
+                {nextAppointment ? (
+                  <article>
+                    <b>{nextAppointment.title}</b>
+                    <span>{new Date(nextAppointment.startsAt).toLocaleString()} com {nextAppointment.professional.name}</span>
+                    <small className="status">{nextAppointment.status}</small>
+                  </article>
+                ) : (
+                  <p className="empty">Nenhum horario futuro. Marque uma consulta com um personal ou nutricionista.</p>
+                )}
+                <button className="secondary" onClick={() => setTab("agenda")}><CalendarDays size={17} /> Abrir agenda</button>
+              </section>
+
+              <section className="panel list">
+                <h2>Ultimos planos</h2>
+                {plans.slice(0, 2).map((plan) => (
+                  <article key={plan.id}>
+                    <b>{plan.title}</b>
+                    <span>{plan.kind} {plan.author ? `por ${plan.author.name}` : ""}</span>
+                  </article>
+                ))}
+                {plans.length === 0 && <p className="empty">Voce ainda nao tem planos salvos.</p>}
+              </section>
+            </div>
+          </div>
+        )}
+
         {tab === "feed" && (
           <div className="grid two">
             <form className="panel" onSubmit={(e) => { e.preventDefault(); submitPost(new FormData(e.currentTarget)); e.currentTarget.reset(); }}>
               <h2>Novo post</h2>
+              <select name="type" defaultValue="TREINO">
+                <option value="TREINO">Treino</option>
+                <option value="DIETA">Dieta</option>
+                <option value="EVOLUCAO">Evolucao</option>
+              </select>
               <input name="title" placeholder="Titulo do treino ou dieta" required />
               <textarea name="content" placeholder="Conte o que voce fez hoje" required />
               <textarea name="workout" placeholder="Exercicios, cargas, refeicoes ou observacoes" />
               <button className="primary"><Plus size={18} /> Publicar</button>
             </form>
             <section className="feed-list">
-              {posts.map((post) => (
+              <label className="search-field">
+                <Search size={18} />
+                <input value={feedQuery} onChange={(event) => setFeedQuery(event.target.value)} placeholder="Buscar por treino, dieta, autor..." />
+              </label>
+              {visiblePosts.map((post) => (
                 <article className="post" key={post.id}>
-                  <div className="post-head"><img src={post.author.avatarUrl} alt="" /><div><b>{post.author.name}</b><span>{roleLabel(post.author.role)} - {new Date(post.createdAt).toLocaleString()}</span></div></div>
+                  <div className="post-head"><img src={post.author.avatarUrl} alt="" /><div><b>{post.author.name}</b><span>{roleLabel(post.author.role)} - {new Date(post.createdAt).toLocaleString()}</span></div><small className="pill">{post.type}</small></div>
                   <h2>{post.title}</h2>
                   <p>{post.content}</p>
                   {post.workout && <pre>{post.workout}</pre>}
@@ -213,11 +304,21 @@ function App() {
                   {post.comments.map((comment) => <p className="comment" key={comment.id}><b>{comment.author.name}:</b> {comment.content}</p>)}
                 </article>
               ))}
+              {visiblePosts.length === 0 && <p className="empty">Nada encontrado no feed com esse filtro.</p>}
             </section>
           </div>
         )}
 
-        {tab === "people" && <UserGrid users={people} action={async (id) => { await api(`/api/users/${id}/follow`, { method: "POST" }); await refresh(); }} />}
+        {tab === "people" && (
+          <div className="stack">
+            <label className="search-field">
+              <Search size={18} />
+              <input value={peopleQuery} onChange={(event) => setPeopleQuery(event.target.value)} placeholder="Buscar por nome, objetivo, cidade ou profissao..." />
+            </label>
+            <UserGrid users={visiblePeople} action={async (id) => { await api(`/api/users/${id}/follow`, { method: "POST" }); await refresh(); }} />
+            {visiblePeople.length === 0 && <p className="empty">Nenhuma pessoa encontrada com esse filtro.</p>}
+          </div>
+        )}
 
         {tab === "chat" && (
           <div className="chat-layout">
@@ -243,7 +344,7 @@ function App() {
               <select name="level"><option>iniciante</option><option>intermediario</option><option>avancado</option></select>
               <input name="days" type="number" min="2" max="7" defaultValue="4" />
               <textarea name="diet" placeholder="Preferencias alimentares, restricoes e rotina" required />
-              <button className="primary"><Bot size={18} /> Gerar plano</button>
+              <button className="primary"><Bot size={18} /> Gerar plano inteligente</button>
             </form>
             <PlanList plans={plans} />
           </div>
@@ -272,7 +373,8 @@ function App() {
             </form>
             <section className="panel list">
               <h2>Minha agenda</h2>
-              {appointments.map((item) => <article key={item.id}><b>{item.title}</b><span>{new Date(item.startsAt).toLocaleString()} com {item.professional.name}</span><small>{item.status}</small></article>)}
+              {appointments.map((item) => <article key={item.id}><b>{item.title}</b><span>{new Date(item.startsAt).toLocaleString()} com {item.professional.name}</span><small className="status"><CheckCircle2 size={14} /> {item.status}</small></article>)}
+              {appointments.length === 0 && <p className="empty">Sua agenda ainda esta vazia.</p>}
             </section>
           </div>
         )}
@@ -287,6 +389,7 @@ function App() {
             <input name="location" defaultValue={me.location} placeholder="Cidade" />
             <textarea name="bio" defaultValue={me.bio} placeholder="Bio" />
             <button className="primary"><Settings size={18} /> Salvar</button>
+            <p className="form-hint"><TrendingUp size={16} /> Perfis completos aparecem melhor para outros membros da comunidade.</p>
           </form>
         )}
       </section>
