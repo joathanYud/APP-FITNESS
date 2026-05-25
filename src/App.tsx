@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 /* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { io, Socket } from "socket.io-client";
 import {
-  Apple,
   Bot,
   CalendarDays,
   Dumbbell,
@@ -11,69 +10,18 @@ import {
   LogOut,
   MessageCircle,
   Plus,
-  Search,
   Settings,
-  UserPlus,
-  Users,
 } from "lucide-react";
-import "./App.css";
-
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:3333";
-
-type Role = "MEMBER" | "PERSONAL" | "NUTRITIONIST" | "ADMIN";
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatarUrl?: string;
-  bio?: string;
-  goal: string;
-  location?: string;
-  isFollowing?: boolean;
-};
-type Post = {
-  id: string;
-  title: string;
-  content: string;
-  workout?: string;
-  type: string;
-  createdAt: string;
-  author: User;
-  comments: { id: string; content: string; author: User }[];
-  likeCount: number;
-  likedByMe: boolean;
-};
-type Message = { id: string; senderId: string; receiverId: string; content: string; createdAt: string };
-type Plan = { id: string; title: string; kind: string; content: string; createdAt: string; author?: User };
-type Appointment = {
-  id: string;
-  title: string;
-  startsAt: string;
-  status: string;
-  notes?: string;
-  professional: User;
-  member: User;
-};
-
-const nav = [
-  ["feed", "Feed", Dumbbell],
-  ["people", "Pessoas", Users],
-  ["chat", "Chat", MessageCircle],
-  ["ai", "IA", Bot],
-  ["pros", "Profissionais", Apple],
-  ["agenda", "Agenda", CalendarDays],
-  ["settings", "Conta", Settings],
-] as const;
-
-function roleLabel(role: Role) {
-  return { MEMBER: "Aluno", PERSONAL: "Personal", NUTRITIONIST: "Nutricionista", ADMIN: "Admin" }[role];
-}
+import { PlanList } from "./components/PlanList";
+import { UserGrid } from "./components/UserGrid";
+import { API_URL, NAV_ITEMS, roleLabel, type TabId } from "./config";
+import type { Appointment, Message, Plan, Post, User } from "./types";
+import "./styles/app.css";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("fitlink_token") ?? "");
   const [me, setMe] = useState<User | null>(null);
-  const [tab, setTab] = useState<(typeof nav)[number][0]>("feed");
+  const [tab, setTab] = useState<TabId>("feed");
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<User[]>([]);
   const [pros, setPros] = useState<User[]>([]);
@@ -89,7 +37,7 @@ function App() {
 
   async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
     // Mantem todas as chamadas autenticadas com o mesmo contrato da API.
-    const res = await fetch(`${API}${path}`, {
+    const res = await fetch(`${API_URL}${path}`, {
       ...options,
       headers: { ...(token ? authHeaders : { "Content-Type": "application/json" }), ...(options.headers ?? {}) },
     });
@@ -122,7 +70,7 @@ function App() {
 
   useEffect(() => {
     if (!token) return;
-    const live = io(API, { auth: { token } });
+    const live = io(API_URL, { auth: { token } });
     live.on("message:new", (message: Message) => {
       setMessages((current) => (current.some((item) => item.id === message.id) ? current : [...current, message]));
     });
@@ -218,7 +166,7 @@ function App() {
       <aside className="sidebar">
         <div className="brand-mark"><Dumbbell size={24} /> FitLink</div>
         <nav>
-          {nav.map(([id, label, Icon]) => (
+          {NAV_ITEMS.map(([id, label, Icon]) => (
             <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
               <Icon size={18} /> {label}
             </button>
@@ -343,36 +291,6 @@ function App() {
         )}
       </section>
     </main>
-  );
-}
-
-function UserGrid({ users, action, compact = false }: { users: User[]; action: (id: string) => void; compact?: boolean }) {
-  return (
-    <section className={compact ? "panel user-grid compact" : "user-grid"}>
-      {!compact && <div className="section-title"><Search size={18} /><h2>Comunidade</h2></div>}
-      {users.map((user) => (
-        <article className="user-card" key={user.id}>
-          <img src={user.avatarUrl} alt="" />
-          <div><b>{user.name}</b><span>{roleLabel(user.role)} - {user.goal}</span><p>{user.bio}</p></div>
-          <button onClick={() => action(user.id)}><UserPlus size={17} /> {user.isFollowing ? "Seguindo" : compact ? "Abrir" : "Seguir"}</button>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function PlanList({ plans }: { plans: Plan[] }) {
-  return (
-    <section className="panel list">
-      <h2>Planos salvos</h2>
-      {plans.map((plan) => (
-        <article key={plan.id}>
-          <b>{plan.title}</b>
-          <span>{plan.kind} {plan.author ? `por ${plan.author.name}` : ""}</span>
-          <pre>{plan.content}</pre>
-        </article>
-      ))}
-    </section>
   );
 }
 

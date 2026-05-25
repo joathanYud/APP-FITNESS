@@ -9,6 +9,14 @@ Site/app fitness responsivo com rede social, feed de treinos, comentarios, curti
 - SQLite em arquivo usando `node:sqlite`
 - Autenticacao JWT
 
+## Estrutura
+
+- `server/`: API, banco SQLite local e rotas do backend
+- `src/components/`: componentes reutilizaveis do frontend
+- `src/styles/`: estilos globais da aplicacao
+- `src/config.ts`: constantes de navegacao e configuracao da API
+- `src/types.ts`: tipos compartilhados da interface
+
 ## Rodar localmente
 
 ```bash
