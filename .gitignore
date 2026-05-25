@@ -1,5 +1,6 @@
 # Logs
 logs
+.logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,12 +8,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencias e builds gerados
 node_modules
 dist
 dist-ssr
+coverage
+.vite
+
+# Ambiente local e banco de desenvolvimento
 *.local
 .env
-.logs
+.env.*
+!.env.example
 data
 
 # Editor directories and files
@@ -25,5 +32,3 @@ data
 *.njsproj
 *.sln
 *.sw?
-
-/src/generated/prisma
