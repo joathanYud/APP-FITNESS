@@ -166,8 +166,22 @@ textarea::placeholder {
 .auth-panel textarea,
 .auth-panel select {
   color: #07100d;
-  background: rgba(255, 255, 255, 0.88);
-  border-color: rgba(11, 29, 22, 0.15);
+  background: #ffffff;
+  border-color: rgba(11, 29, 22, 0.18);
+}
+
+.auth-panel input::placeholder,
+.auth-panel textarea::placeholder {
+  color: #66736d;
+  opacity: 1;
+}
+
+.auth-panel input:focus,
+.auth-panel textarea:focus,
+.auth-panel select:focus {
+  background: #ffffff;
+  border-color: #18b981;
+  box-shadow: 0 0 0 4px rgba(24, 185, 129, 0.22);
 }
 
 .primary,
