@@ -451,12 +451,27 @@ function App() {
                 <input type="file" accept="image/*" onChange={(event) => readImage(event.target.files?.[0]).then(setPreviewAvatar).catch((error) => setNotice(error.message))} />
               </label>
             </div>
-            <input name="name" defaultValue={me.name} placeholder="Nome" />
-            <input name="email" defaultValue={me.email} placeholder="Email" />
-            <input name="avatarUrl" defaultValue={me.avatarUrl} placeholder="URL da foto ou use o upload acima" />
-            <input name="goal" defaultValue={me.goal} placeholder="Objetivo" />
-            <input name="location" defaultValue={me.location} placeholder="Cidade" />
-            <textarea name="bio" defaultValue={me.bio} placeholder="Bio" />
+            <label className="field">
+              <span>Nome</span>
+              <input name="name" defaultValue={me.name} placeholder="Seu nome completo" />
+            </label>
+            <label className="field">
+              <span>Email</span>
+              <input name="email" defaultValue={me.email} placeholder="seu@email.com" />
+            </label>
+            <input type="hidden" name="avatarUrl" defaultValue={me.avatarUrl} />
+            <label className="field">
+              <span>Objetivo</span>
+              <input name="goal" defaultValue={me.goal} placeholder="Ex: emagrecer, ganhar massa, correr 10 km" />
+            </label>
+            <label className="field">
+              <span>Cidade</span>
+              <input name="location" defaultValue={me.location} placeholder="Sua cidade" />
+            </label>
+            <label className="field">
+              <span>Bio</span>
+              <textarea name="bio" defaultValue={me.bio} placeholder="Conte um pouco sobre sua rotina, objetivo e estilo de treino" />
+            </label>
             {me.role !== "MEMBER" && (
               <div className="professional-status">
                 <b>{roleLabel(me.role)}</b>

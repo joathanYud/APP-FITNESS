@@ -135,12 +135,13 @@ input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid rgba(11, 29, 22, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 13px 14px;
-  color: #07100d;
-  background: rgba(255, 255, 255, 0.82);
+  padding: 14px 15px;
+  color: #eff7f2;
+  background: rgba(2, 12, 8, 0.36);
   outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 textarea {
@@ -153,6 +154,20 @@ textarea:focus,
 select:focus {
   border-color: #34d399;
   box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.22);
+  background: rgba(2, 12, 8, 0.58);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(239, 247, 242, 0.48);
+}
+
+.auth-panel input,
+.auth-panel textarea,
+.auth-panel select {
+  color: #07100d;
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(11, 29, 22, 0.15);
 }
 
 .primary,
@@ -532,22 +547,29 @@ pre {
 
 .settings {
   max-width: 780px;
+  gap: 14px;
 }
 
 .avatar-editor {
   justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(52, 211, 153, 0.08));
+  border-radius: 8px;
+  padding: 14px;
 }
 
 .avatar-editor img {
   width: 84px;
   height: 84px;
+  border: 2px solid rgba(52, 211, 153, 0.55);
 }
 
 .upload-button {
-  min-height: 42px;
+  min-height: 48px;
   border-radius: 8px;
-  padding: 0 14px;
-  background: rgba(255, 255, 255, 0.12);
+  padding: 0 16px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #eff7f2;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -562,6 +584,30 @@ pre {
 .professional-status {
   display: grid;
   gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span {
+  color: rgba(239, 247, 242, 0.76);
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.field input,
+.field textarea {
+  min-height: 54px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.045)),
+    rgba(2, 12, 8, 0.34);
+}
+
+.field textarea {
+  min-height: 132px;
+  line-height: 1.45;
 }
 
 .professional-status {
