@@ -6,6 +6,7 @@ import {
   Dumbbell,
   MessageCircle,
   Settings,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import type { Role } from "./types";
@@ -20,6 +21,7 @@ export const NAV_ITEMS = [
   ["ai", "IA", Bot],
   ["pros", "Profissionais", Apple],
   ["agenda", "Agenda", CalendarDays],
+  ["admin", "Admin", ShieldCheck],
   ["settings", "Conta", Settings],
 ] as const;
 

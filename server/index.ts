@@ -17,6 +17,7 @@ const io = new Server(server, { cors: { origin: process.env.CLIENT_ORIGIN ?? "ht
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret-change-me";
 const PORT = Number(process.env.PORT ?? 3333);
 const auth = createAuthMiddleware(JWT_SECRET);
+const professionalRoles = ["PERSONAL", "NUTRITIONIST"];
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173" }));
 app.use(express.json({ limit: "8mb" }));
@@ -150,6 +151,42 @@ app.get("/api/professionals", auth, (_req, res) => {
   res.json(pros.map(publicUser));
 });
 
+function adminOnly(req: AuthRequest, res: express.Response, next: express.NextFunction) {
+  if (req.user?.role !== "ADMIN") return res.status(403).json({ error: "Acesso restrito ao administrador." });
+  next();
+}
+
+app.get("/api/admin/professionals", auth, adminOnly, (req, res) => {
+  const status = typeof req.query.status === "string" ? req.query.status : "PENDING";
+  const professionals = db
+    .prepare(`
+      SELECT * FROM users
+      WHERE role IN ('PERSONAL', 'NUTRITIONIST') AND verificationStatus = ?
+      ORDER BY createdAt DESC
+    `)
+    .all(status) as any[];
+  res.json(professionals.map(publicUser));
+});
+
+app.patch("/api/admin/professionals/:id/verification", auth, adminOnly, (req, res) => {
+  const professionalId = String(req.params.id);
+  const data = z.object({ status: z.enum(["VERIFIED", "REJECTED", "PENDING"]) }).parse(req.body);
+  const professional = getUser(professionalId);
+
+  if (!professional || !professionalRoles.includes(professional.role)) {
+    return res.status(404).json({ error: "Profissional nao encontrado." });
+  }
+
+  db.prepare("UPDATE users SET verificationStatus=?, subscriptionStatus=?, updatedAt=? WHERE id=?").run(
+    data.status,
+    data.status === "VERIFIED" ? "ACTIVE" : professional.subscriptionStatus,
+    now(),
+    professionalId,
+  );
+
+  res.json(publicUser(getUser(professionalId)));
+});
+
 app.get("/api/messages/:userId", auth, (req: AuthRequest, res) => {
   const otherUserId = String(req.params.userId);
   res.json(db.prepare("SELECT * FROM messages WHERE (senderId=? AND receiverId=?) OR (senderId=? AND receiverId=?) ORDER BY createdAt").all(req.user!.id, otherUserId, otherUserId, req.user!.id));
@@ -243,6 +280,46 @@ app.use((error: unknown, _req: express.Request, res: express.Response, next: exp
   return res.status(500).json({ error: "Nao foi possivel concluir a acao agora." });
 });
 
+async function ensureAdminUser() {
+  const email = process.env.ADMIN_EMAIL?.toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  const name = process.env.ADMIN_NAME ?? "Administrador FitLink";
+
+  if (!email || !password) return;
+
+  const existing = getUserByEmail(email);
+  if (existing) {
+    if (existing.role !== "ADMIN") {
+      db.prepare("UPDATE users SET role='ADMIN', updatedAt=? WHERE id=?").run(now(), existing.id);
+    }
+    return;
+  }
+
+  db.prepare(`
+    INSERT INTO users (
+      id, name, email, passwordHash, role, avatarUrl, bio, goal, location, createdAt, updatedAt,
+      professionalKind, verificationStatus, credential, documentUrl, subscriptionPlan, subscriptionStatus
+    ) VALUES (?, ?, ?, ?, 'ADMIN', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id(),
+    name,
+    email,
+    await bcrypt.hash(password, 10),
+    null,
+    "Conta administrativa para verificar profissionais.",
+    "Administrar a plataforma",
+    null,
+    now(),
+    now(),
+    null,
+    "NOT_REQUIRED",
+    null,
+    null,
+    null,
+    "NONE",
+  );
+}
+
 initDb();
 removeDemoData();
-server.listen(PORT, () => console.log(`API FitLink rodando em http://localhost:${PORT}`));
+ensureAdminUser().then(() => server.listen(PORT, () => console.log(`API FitLink rodando em http://localhost:${PORT}`)));

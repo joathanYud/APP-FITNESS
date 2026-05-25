@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   Upload,
@@ -35,6 +36,7 @@ function App() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [people, setPeople] = useState<User[]>([]);
   const [pros, setPros] = useState<User[]>([]);
+  const [pendingProfessionals, setPendingProfessionals] = useState<User[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [activeChat, setActiveChat] = useState<User | null>(null);
@@ -110,6 +112,11 @@ function App() {
     setPlans(userPlans);
     setAppointments(userAppointments);
     setActiveChat((current) => current ?? users[0] ?? null);
+    if (user.role === "ADMIN") {
+      setPendingProfessionals(await api<User[]>("/api/admin/professionals?status=PENDING"));
+    } else {
+      setPendingProfessionals([]);
+    }
   }
 
   useEffect(() => {
@@ -203,6 +210,15 @@ function App() {
     await refresh();
   }
 
+  async function reviewProfessional(id: string, status: "VERIFIED" | "REJECTED") {
+    await api(`/api/admin/professionals/${id}/verification`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    setNotice(status === "VERIFIED" ? "Profissional aprovado." : "Profissional recusado.");
+    await refresh();
+  }
+
   if (!token || !me) {
     return (
       <main className="auth-shell">
@@ -260,7 +276,7 @@ function App() {
       <aside className="sidebar">
         <div className="brand-mark"><Dumbbell size={24} /> FitLink</div>
         <nav>
-          {NAV_ITEMS.map(([id, label, Icon]) => (
+          {NAV_ITEMS.filter(([id]) => id !== "admin" || me.role === "ADMIN").map(([id, label, Icon]) => (
             <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>
               <Icon size={18} /> {label}
             </button>
@@ -437,6 +453,42 @@ function App() {
               <h2>Minha agenda</h2>
               {appointments.map((item) => <article key={item.id}><b>{item.title}</b><span>{new Date(item.startsAt).toLocaleString()} com {item.professional.name}</span><small className="status"><CheckCircle2 size={14} /> {item.status}</small></article>)}
               {appointments.length === 0 && <p className="empty">Sua agenda ainda esta vazia.</p>}
+            </section>
+          </div>
+        )}
+
+        {tab === "admin" && me.role === "ADMIN" && (
+          <div className="admin-layout">
+            <section className="hero-panel admin-hero">
+              <div>
+                <p>Painel administrativo</p>
+                <h2>Verificacao profissional</h2>
+                <span>Aprove apenas profissionais com registro e comprovante coerentes.</span>
+              </div>
+              <ShieldCheck size={42} />
+            </section>
+
+            <section className="panel list">
+              <h2>Solicitacoes pendentes</h2>
+              {pendingProfessionals.map((professional) => (
+                <article className="review-card" key={professional.id}>
+                  <div>
+                    <b>{professional.name}</b>
+                    <span>{roleLabel(professional.role)} - {professional.email}</span>
+                    <small className="status">{professional.subscriptionPlan || "Sem plano informado"}</small>
+                  </div>
+                  <div className="review-details">
+                    <p><b>Registro:</b> {professional.credential || "Nao informado"}</p>
+                    <p><b>Objetivo:</b> {professional.goal}</p>
+                    {professional.documentUrl ? <a href={professional.documentUrl} target="_blank" rel="noreferrer">Abrir comprovante</a> : <span>Sem comprovante</span>}
+                  </div>
+                  <div className="review-actions">
+                    <button className="secondary danger" onClick={() => reviewProfessional(professional.id, "REJECTED")}>Recusar</button>
+                    <button className="primary" onClick={() => reviewProfessional(professional.id, "VERIFIED")}><ShieldCheck size={17} /> Aprovar</button>
+                  </div>
+                </article>
+              ))}
+              {pendingProfessionals.length === 0 && <p className="empty">Nenhuma solicitacao pendente agora.</p>}
             </section>
           </div>
         )}
