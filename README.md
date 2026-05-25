@@ -27,12 +27,7 @@ npm run dev
 Web: http://localhost:5173  
 API: http://localhost:3333
 
-O banco local fica em `data/fitlink.sqlite` e e criado automaticamente com dados de exemplo.
-
-Login de teste:
-
-- Email: `ana@fitlink.com`
-- Senha: `123456`
+O banco local fica em `data/fitlink.sqlite` e e criado automaticamente vazio. Crie sua conta na primeira abertura.
 
 ## Scripts
 
@@ -42,6 +37,12 @@ npm run build     # compila frontend
 npm run lint      # checa qualidade
 npm run db:reset  # remove o banco local; ele sera recriado no proximo dev
 ```
+
+## Seguranca
+
+- Nunca suba `.env`, banco SQLite local, logs, builds ou `node_modules`.
+- Use `.env.example` como modelo e coloque segredos reais apenas em `.env`.
+- Profissionais entram com registro, comprovante e plano; o perfil fica em analise antes de receber selo.
 
 ## Publicar no GitHub
 

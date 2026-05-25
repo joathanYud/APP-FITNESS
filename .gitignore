@@ -21,6 +21,10 @@ coverage
 .env.*
 !.env.example
 data
+*.sqlite
+*.sqlite-journal
+*.db
+*.db-journal
 
 # Editor directories and files
 .vscode/*

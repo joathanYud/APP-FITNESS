@@ -15,6 +15,7 @@ import {
   Settings,
   Sparkles,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 import { PlanList } from "./components/PlanList";
 import { UserGrid } from "./components/UserGrid";
@@ -39,6 +40,8 @@ function App() {
   const [activeChat, setActiveChat] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [accountType, setAccountType] = useState<"MEMBER" | "PROFESSIONAL">("MEMBER");
+  const [previewAvatar, setPreviewAvatar] = useState("");
   const [notice, setNotice] = useState("");
   const [feedQuery, setFeedQuery] = useState("");
   const [peopleQuery, setPeopleQuery] = useState("");
@@ -181,13 +184,32 @@ function App() {
     await api<Message>(`/api/messages/${activeChat.id}`, { method: "POST", body: JSON.stringify({ content }) });
   }
 
+  function readImage(file?: File) {
+    return new Promise<string>((resolve, reject) => {
+      if (!file) return resolve("");
+      if (!file.type.startsWith("image/")) return reject(new Error("Escolha um arquivo de imagem."));
+      if (file.size > 1_500_000) return reject(new Error("A imagem deve ter no maximo 1.5 MB."));
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Nao foi possivel carregar a imagem."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function updateProfile(form: HTMLFormElement) {
+    const data = Object.fromEntries(new FormData(form).entries());
+    await api("/api/me", { method: "PATCH", body: JSON.stringify({ ...data, avatarUrl: previewAvatar || data.avatarUrl }) });
+    setNotice("Perfil atualizado.");
+    await refresh();
+  }
+
   if (!token || !me) {
     return (
       <main className="auth-shell">
         <section className="auth-hero">
           <div className="brand-mark"><Dumbbell size={26} /> FitLink</div>
-          <h1>Rede social, treinos, dietas e agenda fitness em um so lugar.</h1>
-          <p>Entre com <b>ana@fitlink.com</b> e senha <b>123456</b>, ou crie sua conta agora.</p>
+          <h1>Fitness social com profissionais verificados, IA e rotina de verdade.</h1>
+          <p>Crie sua conta como aluno ou solicite entrada como profissional da area fitness.</p>
         </section>
         <form
           className="auth-panel"
@@ -201,9 +223,31 @@ function App() {
             <button type="button" className={authMode === "register" ? "active" : ""} onClick={() => setAuthMode("register")}>Cadastrar</button>
           </div>
           {authMode === "register" && <input name="name" placeholder="Nome completo" required />}
-          <input name="email" type="email" placeholder="Email" defaultValue="ana@fitlink.com" required />
-          <input name="password" type="password" placeholder="Senha" defaultValue="123456" minLength={6} required />
+          {authMode === "register" && (
+            <div className="segmented slim">
+              <button type="button" className={accountType === "MEMBER" ? "active" : ""} onClick={() => setAccountType("MEMBER")}>Aluno</button>
+              <button type="button" className={accountType === "PROFESSIONAL" ? "active" : ""} onClick={() => setAccountType("PROFESSIONAL")}>Profissional</button>
+            </div>
+          )}
+          <input type="hidden" name="accountType" value={accountType} />
+          <input name="email" type="email" placeholder="Email" required />
+          <input name="password" type="password" placeholder="Senha" minLength={6} required />
           {authMode === "register" && <input name="goal" placeholder="Objetivo principal" />}
+          {authMode === "register" && accountType === "PROFESSIONAL" && (
+            <div className="professional-box">
+              <select name="professionalKind" defaultValue="PERSONAL">
+                <option value="PERSONAL">Personal trainer</option>
+                <option value="NUTRITIONIST">Nutricionista</option>
+              </select>
+              <input name="credential" placeholder="CREF, CRN ou registro profissional" required />
+              <input name="documentUrl" placeholder="Link do comprovante ou portfolio profissional" required />
+              <select name="subscriptionPlan" defaultValue="PRO_START">
+                <option value="PRO_START">Pro Start - teste inicial</option>
+                <option value="PRO_PLUS">Pro Plus - agenda e alunos ilimitados</option>
+              </select>
+              <p className="form-hint">O perfil profissional entra em analise. Depois da verificacao, ele aparece como profissional verificado.</p>
+            </div>
+          )}
           <button className="primary" type="submit">{authMode === "login" ? "Entrar" : "Criar conta"}</button>
           {notice && <p className="notice">{notice}</p>}
         </form>
@@ -372,8 +416,8 @@ function App() {
           <div className="grid two">
             <UserGrid users={pros} compact action={async (id) => { setActiveChat(pros.find((p) => p.id === id) ?? null); setTab("chat"); }} />
             <section className="panel">
-              <h2>Contratar profissional</h2>
-              <p>Escolha um personal ou nutricionista, converse pelo chat e marque consulta na agenda.</p>
+              <h2>Profissionais com analise</h2>
+              <p>Personais e nutricionistas precisam informar registro profissional, comprovante e plano de uso. Perfis verificados aparecem com selo.</p>
               <PlanList plans={plans} />
             </section>
           </div>
@@ -383,11 +427,11 @@ function App() {
           <div className="grid two">
             <form className="panel" onSubmit={(e) => { e.preventDefault(); book(new FormData(e.currentTarget)); }}>
               <h2>Marcar compromisso</h2>
-              <select name="professionalId">{pros.map((pro) => <option key={pro.id} value={pro.id}>{pro.name} - {roleLabel(pro.role)}</option>)}</select>
+              <select name="professionalId" disabled={pros.length === 0}>{pros.length === 0 ? <option>Nenhum profissional verificado disponivel</option> : pros.map((pro) => <option key={pro.id} value={pro.id}>{pro.name} - {roleLabel(pro.role)}</option>)}</select>
               <input name="title" placeholder="Titulo da consulta" required />
               <input name="startsAt" type="datetime-local" defaultValue={appointmentDefault} min={appointmentMin} required />
               <textarea name="notes" placeholder="Observacoes" />
-              <button className="primary"><CalendarDays size={18} /> Agendar</button>
+              <button className="primary" disabled={pros.length === 0}><CalendarDays size={18} /> Agendar</button>
             </form>
             <section className="panel list">
               <h2>Minha agenda</h2>
@@ -398,14 +442,28 @@ function App() {
         )}
 
         {tab === "settings" && (
-          <form className="panel settings" onSubmit={async (e) => { e.preventDefault(); await api("/api/me", { method: "PATCH", body: JSON.stringify(Object.fromEntries(new FormData(e.currentTarget).entries())) }); setNotice("Perfil atualizado."); await refresh(); }}>
+          <form className="panel settings" onSubmit={async (e) => { e.preventDefault(); updateProfile(e.currentTarget); }}>
             <h2>Configuracoes da conta</h2>
+            <div className="avatar-editor">
+              <img src={previewAvatar || me.avatarUrl || "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=180&h=180&fit=crop"} alt="" />
+              <label className="upload-button">
+                <Upload size={17} /> Trocar foto
+                <input type="file" accept="image/*" onChange={(event) => readImage(event.target.files?.[0]).then(setPreviewAvatar).catch((error) => setNotice(error.message))} />
+              </label>
+            </div>
             <input name="name" defaultValue={me.name} placeholder="Nome" />
             <input name="email" defaultValue={me.email} placeholder="Email" />
-            <input name="avatarUrl" defaultValue={me.avatarUrl} placeholder="URL da foto" />
+            <input name="avatarUrl" defaultValue={me.avatarUrl} placeholder="URL da foto ou use o upload acima" />
             <input name="goal" defaultValue={me.goal} placeholder="Objetivo" />
             <input name="location" defaultValue={me.location} placeholder="Cidade" />
             <textarea name="bio" defaultValue={me.bio} placeholder="Bio" />
+            {me.role !== "MEMBER" && (
+              <div className="professional-status">
+                <b>{roleLabel(me.role)}</b>
+                <span>{me.credential || "Registro nao informado"}</span>
+                <small className={`verify-badge ${me.verificationStatus?.toLowerCase()}`}>{me.verificationStatus === "VERIFIED" ? "Profissional verificado" : "Verificacao em analise"}</small>
+              </div>
+            )}
             <button className="primary"><Settings size={18} /> Salvar</button>
             <p className="form-hint"><TrendingUp size={16} /> Perfis completos aparecem melhor para outros membros da comunidade.</p>
           </form>

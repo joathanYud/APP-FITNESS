@@ -9,7 +9,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { z } from "zod";
 import { createAuthMiddleware, publicUser, signToken, type AuthRequest } from "./auth";
-import { db, getUser, getUserByEmail, id, initDb, now, seed } from "./database";
+import { db, getUser, getUserByEmail, id, initDb, now, removeDemoData } from "./database";
 
 const app = express();
 const server = createServer(app);
@@ -19,16 +19,52 @@ const PORT = Number(process.env.PORT ?? 3333);
 const auth = createAuthMiddleware(JWT_SECRET);
 
 app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173" }));
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "8mb" }));
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.post("/api/auth/register", async (req, res) => {
-  const data = z.object({ name: z.string().min(2), email: z.string().email(), password: z.string().min(6), goal: z.string().optional() }).parse(req.body);
+  const data = z
+    .object({
+      name: z.string().min(2),
+      email: z.string().email(),
+      password: z.string().min(6),
+      goal: z.string().optional(),
+      accountType: z.enum(["MEMBER", "PROFESSIONAL"]).optional(),
+      professionalKind: z.enum(["PERSONAL", "NUTRITIONIST"]).optional(),
+      credential: z.string().optional(),
+      documentUrl: z.string().optional(),
+      subscriptionPlan: z.string().optional(),
+    })
+    .parse(req.body);
   const userId = id();
-  db.prepare("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
-    userId, data.name, data.email.toLowerCase(), await bcrypt.hash(data.password, 10), "MEMBER", null, null,
-    data.goal ?? "Criar uma rotina fitness", null, now(), now(),
+  const isProfessional = data.accountType === "PROFESSIONAL";
+  const role = isProfessional ? data.professionalKind ?? "PERSONAL" : "MEMBER";
+  const verificationStatus = isProfessional ? "PENDING" : "NOT_REQUIRED";
+  const subscriptionStatus = isProfessional ? "TRIAL" : "NONE";
+  db.prepare(`
+    INSERT INTO users (
+      id, name, email, passwordHash, role, avatarUrl, bio, goal, location, createdAt, updatedAt,
+      professionalKind, verificationStatus, credential, documentUrl, subscriptionPlan, subscriptionStatus
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    userId,
+    data.name,
+    data.email.toLowerCase(),
+    await bcrypt.hash(data.password, 10),
+    role,
+    null,
+    null,
+    data.goal ?? (isProfessional ? "Atender alunos com seguranca" : "Criar uma rotina fitness"),
+    null,
+    now(),
+    now(),
+    isProfessional ? role : null,
+    verificationStatus,
+    data.credential ?? null,
+    data.documentUrl ?? null,
+    data.subscriptionPlan ?? null,
+    subscriptionStatus,
   );
   const user = getUser(userId);
   res.json({ token: signToken(user, JWT_SECRET), user: publicUser(user) });
@@ -44,7 +80,7 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/me", auth, (req: AuthRequest, res) => res.json(publicUser(getUser(req.user!.id))));
 
 app.patch("/api/me", auth, (req: AuthRequest, res) => {
-  const data = z.object({ name: z.string().optional(), email: z.string().email().optional(), avatarUrl: z.string().optional(), bio: z.string().optional(), goal: z.string().optional(), location: z.string().optional() }).parse(req.body);
+  const data = z.object({ name: z.string().optional(), email: z.string().email().optional(), avatarUrl: z.string().max(6_000_000).optional(), bio: z.string().optional(), goal: z.string().optional(), location: z.string().optional() }).parse(req.body);
   const current = getUser(req.user!.id);
   db.prepare("UPDATE users SET name=?, email=?, avatarUrl=?, bio=?, goal=?, location=?, updatedAt=? WHERE id=?").run(
     data.name ?? current.name, data.email?.toLowerCase() ?? current.email, data.avatarUrl || current.avatarUrl, data.bio ?? current.bio,
@@ -110,7 +146,7 @@ app.post("/api/users/:id/follow", auth, (req: AuthRequest, res) => {
 });
 
 app.get("/api/professionals", auth, (_req, res) => {
-  const pros = db.prepare("SELECT * FROM users WHERE role IN ('PERSONAL', 'NUTRITIONIST') ORDER BY name").all() as any[];
+  const pros = db.prepare("SELECT * FROM users WHERE role IN ('PERSONAL', 'NUTRITIONIST') AND verificationStatus = 'VERIFIED' ORDER BY name").all() as any[];
   res.json(pros.map(publicUser));
 });
 
@@ -208,4 +244,5 @@ app.use((error: unknown, _req: express.Request, res: express.Response, next: exp
 });
 
 initDb();
-seed().then(() => server.listen(PORT, () => console.log(`API FitLink rodando em http://localhost:${PORT}`)));
+removeDemoData();
+server.listen(PORT, () => console.log(`API FitLink rodando em http://localhost:${PORT}`));

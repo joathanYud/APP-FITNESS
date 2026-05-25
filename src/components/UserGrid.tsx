@@ -1,5 +1,5 @@
 import { Search, UserPlus } from "lucide-react";
-import { roleLabel } from "../config";
+import { roleLabel, verificationLabel } from "../config";
 import type { User } from "../types";
 
 type UserGridProps = {
@@ -25,6 +25,7 @@ export function UserGrid({ users, action, compact = false }: UserGridProps) {
             <span>
               {roleLabel(user.role)} - {user.goal}
             </span>
+            {user.role !== "MEMBER" && <small className={`verify-badge ${user.verificationStatus?.toLowerCase()}`}>{verificationLabel(user.verificationStatus)}</small>}
             <p>{user.bio}</p>
           </div>
           <button onClick={() => action(user.id)}>

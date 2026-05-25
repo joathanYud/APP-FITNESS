@@ -1,4 +1,5 @@
 export type Role = "MEMBER" | "PERSONAL" | "NUTRITIONIST" | "ADMIN";
+export type VerificationStatus = "NOT_REQUIRED" | "PENDING" | "VERIFIED" | "REJECTED";
 
 export type User = {
   id: string;
@@ -10,6 +11,12 @@ export type User = {
   goal: string;
   location?: string;
   isFollowing?: boolean;
+  professionalKind?: "PERSONAL" | "NUTRITIONIST";
+  verificationStatus?: VerificationStatus;
+  credential?: string;
+  documentUrl?: string;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
 };
 
 export type Post = {

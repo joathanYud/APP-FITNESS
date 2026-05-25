@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 // O SQLite nativo retorna objetos dinamicos; as rotas validam entradas com Zod.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { randomUUID } from "node:crypto";
@@ -62,6 +61,13 @@ export function initDb() {
       FOREIGN KEY(memberId) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY(professionalId) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  addColumnIfMissing("users", "professionalKind", "TEXT");
+  addColumnIfMissing("users", "verificationStatus", "TEXT NOT NULL DEFAULT 'NOT_REQUIRED'");
+  addColumnIfMissing("users", "credential", "TEXT");
+  addColumnIfMissing("users", "documentUrl", "TEXT");
+  addColumnIfMissing("users", "subscriptionPlan", "TEXT");
+  addColumnIfMissing("users", "subscriptionStatus", "TEXT NOT NULL DEFAULT 'NONE'");
 }
 
 export function getUserByEmail(email: string) {
@@ -72,26 +78,15 @@ export function getUser(id: string) {
   return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as any;
 }
 
-export async function seed() {
-  // Popula o ambiente local com usuarios, posts, plano e agenda para teste imediato.
-  const count = db.prepare("SELECT COUNT(*) as total FROM users").get() as { total: number };
-  if (count.total > 0) return;
-  const passwordHash = await bcrypt.hash("123456", 10);
-  const users = [
-    ["ana", "Ana Ribeiro", "ana@fitlink.com", "MEMBER", "Emagrecer com saude", "Corrida leve, musculacao e marmitas simples.", "Sao Paulo", "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=180&h=180&fit=crop&crop=faces"],
-    ["marcos", "Marcos Lima", "marcos@fitlink.com", "PERSONAL", "Forca e hipertrofia", "Personal trainer especialista em recomposicao corporal.", "Online", "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=180&h=180&fit=crop&crop=faces"],
-    ["julia", "Dra. Julia Costa", "julia@fitlink.com", "NUTRITIONIST", "Nutrir rotina real", "Nutricionista esportiva, sem terrorismo alimentar.", "Online", "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=180&h=180&fit=crop&crop=faces"],
-    ["leo", "Leo Martins", "leo@fitlink.com", "MEMBER", "Correr 10 km", "Tentando bater meus primeiros 10 km sem quebrar no km 7.", "Campinas", "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=180&h=180&fit=crop&crop=faces"],
-  ];
-  const insertUser = db.prepare("INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  users.forEach(([userId, name, email, role, goal, bio, location, avatarUrl]) => {
-    insertUser.run(userId, name, email, passwordHash, role, avatarUrl, bio, goal, location, now(), now());
-  });
-  db.prepare("INSERT INTO follows VALUES (?, ?, ?, ?)").run(id(), "ana", "marcos", now());
-  const post = db.prepare("INSERT INTO posts VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  post.run(id(), "ana", "TREINO", "Treino de pernas finalizado", "Hoje subi carga no agachamento e finalizei com 15 min de escada.", "Agachamento 4x8, leg press 4x10, stiff 3x10", null, now());
-  post.run(id(), "marcos", "TREINO", "Dica rapida para progressao", "Primeiro estabilize tecnica, amplitude e descanso.", "Anote carga, RPE e repeticoes feitas de verdade.", null, now());
-  post.run(id(), "julia", "DIETA", "Pre-treino simples", "Banana, iogurte e aveia resolvem a vida de muita gente antes do treino.", null, null, now());
-  db.prepare("INSERT INTO plans VALUES (?, ?, ?, ?, ?, ?, ?)").run(id(), "ana", "marcos", "TREINO", "Hipertrofia iniciante - 4 semanas", "4 dias por semana alternando inferiores e superiores, com progressao leve de carga e cardio moderado.", now());
-  db.prepare("INSERT INTO appointments VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(id(), "ana", "julia", "Consulta nutricional inicial", new Date(Date.now() + 86400000).toISOString(), "CONFIRMED", "Levar medidas atuais e rotina alimentar.", now());
+function addColumnIfMissing(table: string, column: string, definition: string) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!columns.some((item) => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+export function removeDemoData() {
+  const demoIds = ["ana", "marcos", "julia", "leo"];
+  const placeholders = demoIds.map(() => "?").join(",");
+  db.prepare(`DELETE FROM users WHERE id IN (${placeholders})`).run(...demoIds);
 }

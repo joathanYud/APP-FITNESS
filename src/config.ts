@@ -33,3 +33,12 @@ export function roleLabel(role: Role) {
     ADMIN: "Admin",
   }[role];
 }
+
+export function verificationLabel(status?: string) {
+  return {
+    VERIFIED: "Profissional verificado",
+    PENDING: "Verificacao em analise",
+    REJECTED: "Verificacao recusada",
+    NOT_REQUIRED: "Membro",
+  }[status ?? "NOT_REQUIRED"];
+}
