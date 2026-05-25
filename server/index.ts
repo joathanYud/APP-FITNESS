@@ -190,5 +190,22 @@ io.on("connection", (socket) => {
   }
 });
 
+app.use((error: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  void next;
+  if (error instanceof z.ZodError) {
+    const firstIssue = error.issues[0];
+    const field = firstIssue?.path.join(".");
+    const message = field === "password" ? "A senha deve ter pelo menos 6 caracteres." : "Confira os dados informados.";
+    return res.status(400).json({ error: message });
+  }
+
+  if (error instanceof Error && error.message.includes("UNIQUE constraint failed: users.email")) {
+    return res.status(409).json({ error: "Este email ja esta cadastrado. Tente entrar na conta." });
+  }
+
+  console.error(error);
+  return res.status(500).json({ error: "Nao foi possivel concluir a acao agora." });
+});
+
 initDb();
 seed().then(() => server.listen(PORT, () => console.log(`API FitLink rodando em http://localhost:${PORT}`)));

@@ -73,8 +73,10 @@ function App() {
       ...options,
       headers: { ...(token ? authHeaders : { "Content-Type": "application/json" }), ...(options.headers ?? {}) },
     });
-    if (!res.ok) throw new Error((await res.json()).error ?? "Erro inesperado.");
-    return res.json();
+    const contentType = res.headers.get("content-type") ?? "";
+    const payload = contentType.includes("application/json") ? await res.json() : { error: await res.text() };
+    if (!res.ok) throw new Error(payload.error ?? "Erro inesperado.");
+    return payload;
   }
 
   async function refresh() {
@@ -184,7 +186,7 @@ function App() {
           </div>
           {authMode === "register" && <input name="name" placeholder="Nome completo" required />}
           <input name="email" type="email" placeholder="Email" defaultValue="ana@fitlink.com" required />
-          <input name="password" type="password" placeholder="Senha" defaultValue="123456" required />
+          <input name="password" type="password" placeholder="Senha" defaultValue="123456" minLength={6} required />
           {authMode === "register" && <input name="goal" placeholder="Objetivo principal" />}
           <button className="primary" type="submit">{authMode === "login" ? "Entrar" : "Criar conta"}</button>
           {notice && <p className="notice">{notice}</p>}
