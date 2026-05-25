@@ -1,4 +1,5 @@
 import "dotenv/config";
+// O SQLite nativo retorna registros sem tipos fortes; validamos as entradas com Zod.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import bcrypt from "bcryptjs";
 import cors from "cors";
@@ -59,6 +60,7 @@ function auth(req: AuthRequest, res: express.Response, next: express.NextFunctio
 }
 
 function initDb() {
+  // Cria as tabelas essenciais do FitLink quando o banco local ainda nao existe.
   db.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS users (
@@ -111,6 +113,7 @@ function getUser(id: string) {
 }
 
 async function seed() {
+  // Popula o ambiente local com usuarios, posts, plano e agenda para teste imediato.
   const count = db.prepare("SELECT COUNT(*) as total FROM users").get() as { total: number };
   if (count.total > 0) return;
   const passwordHash = await bcrypt.hash("123456", 10);

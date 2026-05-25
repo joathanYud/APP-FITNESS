@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+// A tela centraliza varios fluxos do MVP; estes efeitos sincronizam dados externos.
 /* eslint-disable react-hooks/exhaustive-deps, react-hooks/set-state-in-effect */
 import { io, Socket } from "socket.io-client";
 import {
@@ -87,6 +88,7 @@ function App() {
   const authHeaders = useMemo(() => ({ Authorization: `Bearer ${token}`, "Content-Type": "application/json" }), [token]);
 
   async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+    // Mantem todas as chamadas autenticadas com o mesmo contrato da API.
     const res = await fetch(`${API}${path}`, {
       ...options,
       headers: { ...(token ? authHeaders : { "Content-Type": "application/json" }), ...(options.headers ?? {}) },
