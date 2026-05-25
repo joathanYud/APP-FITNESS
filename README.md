@@ -29,25 +29,5 @@ API: http://localhost:3333
 
 O banco local fica em `data/fitlink.sqlite` e e criado automaticamente vazio. Crie sua conta na primeira abertura.
 
-## Scripts
 
-```bash
-npm run dev       # sobe web + API
-npm run build     # compila frontend
-npm run lint      # checa qualidade
-npm run db:reset  # remove o banco local; ele sera recriado no proximo dev
-```
 
-## Seguranca
-
-- Nunca suba `.env`, banco SQLite local, logs, builds ou `node_modules`.
-- Use `.env.example` como modelo e coloque segredos reais apenas em `.env`.
-- Profissionais entram com registro, comprovante e plano; o perfil fica em analise antes de receber selo.
-
-## Publicar no GitHub
-
-```bash
-git remote add origin https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-git branch -M main
-git push -u origin main
-```
